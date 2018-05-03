@@ -1,0 +1,292 @@
+<!-------------Mysqli Database Conection:--------------->
+//config.php
+<?php
+define("DB_HOST", "localhost");
+define("DB_USER", "root");
+define("DB_PASS", "");
+define("DB_NAME", "blog_db");
+?>
+//Database.php
+<?php
+Class Database{
+	public $host   = DB_HOST;
+	public $user   = DB_USER;
+	public $pass   = DB_PASS;
+	public $dbname = DB_NAME;
+	
+	
+	public $link;
+	public $error;
+	
+	public function __construct(){
+		$this->connectDB();
+	}
+	
+	private function connectDB(){
+	$this->link = new mysqli($this->host, $this->user, $this->pass, $this->dbname);
+	if(!$this->link){
+		$this->error ="Connection fail".$this->link->connect_error;
+		return false;
+	}
+ }
+	
+	// Select or Read data
+	
+	public function select($query){
+		$result = $this->link->query($query) or die($this->link->error.__LINE__);
+		if($result->num_rows > 0){
+			return $result;
+		} else {
+			return false;
+		}
+	}
+	
+	// Insert data
+	public function insert($query){
+	$insert_row = $this->link->query($query) or die($this->link->error.__LINE__);
+	if($insert_row){
+		return $insert_row;
+	} else {
+		return false;
+	}
+  }
+  
+    // Update data
+  	public function update($query){
+	$update_row = $this->link->query($query) or die($this->link->error.__LINE__);
+	if($update_row){
+		return $update_row;
+	} else {
+		return false;
+	}
+  }
+  
+  // Delete data
+   public function delete($query){
+	$delete_row = $this->link->query($query) or die($this->link->error.__LINE__);
+	if($delete_row){
+		return $delete_row;
+	} else {
+		return false;
+  }
+}
+}
+
+
+<!-------------END Mysqli Database Conection:---------------> 
+
+<!-------------USing Helper---------------> 
+<?php
+	class Formate{
+		public function FormateDate($date){
+			return date('F j, Y,g:i a',strtotime($date));
+		}
+		
+		public function TextShort($text, $limit=400){
+			$text = $text." ";
+			$text = substr($text, 0 ,$limit);
+			$text = substr($text, 0 ,strrpos($text,' '));
+			$text = $text."...";
+			return $text;
+		}
+
+		public function ValiDation($data){
+			$data = trim($data);
+			$data = stripcslashes($data);
+			$data = htmlspecialchars($data);
+			return $data;
+		}
+	}
+
+?>
+<!-------------END USing Helper---------------> 
+
+<!-------------Login System---------------> 
+//Session.php
+<?php
+	/**
+	* Session Class
+	*/
+	class Session{
+		public static function init(){
+			session_start();
+		}
+
+		public static function set($key,$val){
+			$_SESSION[$key] = $val;
+		}
+
+		public static function get($key){
+			if(isset($_SESSION[$key])){
+				return $_SESSION[$key];
+			}else{
+				return false;
+			}
+		}
+
+		public static function CheckSession(){
+			self::init();
+			if(self::get("login")==false){
+				self::destory();
+				header("location: login.php");
+			}
+		}
+
+		public static function destory(){
+			session_destroy();
+			header("location: login.php");
+		} 
+
+	}
+?>
+//login.php
+<?php
+	if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+		$username = $fm->ValiDation($_POST['username']);
+		$password = $fm->ValiDation(MD5($_POST['password']));
+
+		$username = mysqli_real_escape_string($db->link , $username);
+		$password = mysqli_real_escape_string($db->link , $password);
+
+		$sql = "SELECT * FROM tbl_user WHERE username = '$username' AND password = '$password'";
+		$result = $db->select($sql);
+		if($result != false){
+			$value 	= mysqli_fetch_array($result);
+			$row	= mysqli_num_rows($result); 
+			if($row > 0){
+				Session::set("login", true);
+				Session::set("username", $value['username']);
+				Session::set("userId", $value['id']);
+				header("Location: index.php");
+
+			} else{echo "<span style='color:Red;'>No result found!</span>";}
+		}else{
+			echo "<span style='color:Red;'>Username and Password May be not!</span>";
+		}
+	}
+?>
+<!-------------END Login System---------------> 
+
+
+<!-------------#Uploadimage with validation:--------------->
+<?php
+   if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $permited  = array('jpg', 'jpeg', 'png', 'gif');
+    $file_name = $_FILES['image']['name'];
+    $file_size = $_FILES['image']['size'];
+    $file_temp = $_FILES['image']['tmp_name'];
+
+    $div = explode('.', $file_name);
+    $file_ext = strtolower(end($div));
+    $unique_image = substr(md5(time()), 0, 10).'.'.$file_ext;
+    $uploaded_image = "uploads/".$unique_image;
+
+    if (empty($file_name)) {
+     echo "<span class='error'>Please Select any Image !</span>";
+    }elseif ($file_size >1048567) {
+     echo "<span class='error'>Image Size should be less then 1MB!
+     </span>";
+    } elseif (in_array($file_ext, $permited) === false) {
+     echo "<span class='error'>You can upload only:-"
+     .implode(', ', $permited)."</span>";
+    } else{
+    move_uploaded_file($file_temp, $uploaded_image);
+    $query = "INSERT INTO tbl_image(image) 
+    VALUES('$uploaded_image')";
+    $inserted_rows = $db->insert($query);
+    if ($inserted_rows) {
+     echo "<span class='success'>Image Inserted Successfully.
+     </span>";
+    }else {
+     echo "<span class='error'>Image Not Inserted !</span>";
+    }
+    }
+   }
+  ?>
+
+  <!-------------End Uploadimage with validation:--------------->
+
+  <!-------------Mysqli Select Query:--------------->
+
+	$sql = "SELECT * FROM tbl_post";
+	$ViewPost = $db->select($sql);
+	if($ViewPost){
+		while($row = $ViewPost->fetch_assoc()){
+
+		//Here the code
+
+	<?php }} else{header("location: 404.php");} ?>
+
+  <!-------------END Mysqli Select Query:--------------->
+
+  <!-------------Mysqli Insert Query:--------------->
+  <?php 
+    if($_SERVER['REQUEST_METHOD']=='POST'){
+        $cat_name = $_POST['cat_name'];
+        $cat_name = mysqli_real_escape_string($db->link , $cat_name);
+        if(empty($cat_name)){
+            echo "<span class='error'>Field Must not be Empty!</span>";
+            }else{
+            $sql = "INSERT INTO tbl_category (cat_name) VALUES ('$cat_name')";
+            $AddCat = $db->insert($sql);
+            if($AddCat){
+                echo "<span class='success'>Category Inserted Successfully!</span>";
+            }
+        }
+     } 
+    ?>
+
+  <!-------------END Mysqli Insert Query:--------------->
+  <!-------------Mysqli Update Query:--------------->
+
+<?php 
+    if($_SERVER['REQUEST_METHOD']=='POST'){
+        $cat_name = $_POST['cat_name'];
+        $cat_name = mysqli_real_escape_string($db->link , $cat_name);
+        if(empty($cat_name)){
+            echo "<span class='error'>Field Must not be Empty!</span>";
+            }else{
+            $sql = "UPDATE tbl_category
+                SET 
+                cat_name = '$cat_name'
+                WHERE id = '$catId'";
+            $UpdatCate = $db->update($sql);
+            if($UpdatCate){
+                echo "<span class='success'>Category Updated Successfully!</span>";
+            }
+        }
+     } 
+?>
+<?php 
+    $sql = "SELECT * FROM tbl_category WHERE id = '$catId'";
+    $EditCat = $db->select($sql)->fetch_assoc();
+?>
+
+  <!------------- END Mysqli Update Query:--------------->
+
+  <!-------------Mysqli Delete Query:--------------->
+  <?php
+	if(isset($_GET['delID'])){
+		$delID = $_GET['delID'];
+		$sql = "DELETE FROM tbl_category WHERE id = '$delID'";
+		$DelCat = $db->delete($sql);
+		if($DelCat){
+			echo "<span class='success'>Category Deleted Succussfully!</span>";
+		}
+	}
+?>	
+  <!-------------END Mysqli Delete Query:--------------->
+ <!-----------------------Edit-----------------------> 
+  <?php
+    if(isset($_GET['catEdit']) && $_GET['catEdit'] != NULL){
+        $catId = $_GET['catEdit'];
+    }else{
+        echo "<script>window.location = 'catlist.php'</script>";
+        # header("Location: catlist.php");
+    }
+?>
+ <?php 
+    $sql = "SELECT * FROM tbl_category WHERE id = '$catId'";
+    $EditCat = $db->select($sql)->fetch_assoc();
+?>
+ <!-----------------------END Edit-----------------------> 
